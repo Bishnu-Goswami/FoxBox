@@ -8,13 +8,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          submodules: 'recursive' # <--- This fixes the missing UserLAndLibrary
+        # We removed the automatic submodule download here so it doesn't crash on the dead link
+
+      - name: Patch dead submodule URL and download
+        run: |
+          # This replaces the dead URL with a working community backup, then downloads it
+          sed -i 's|https://github.com/CypherpunkArmory/UserLAndLibrary.git|https://github.com/RakhithJK/UserLAndLibrary.git|g' .gitmodules
+          git submodule sync
+          git submodule update --init --recursive
 
       - name: Set up Java 
         uses: actions/setup-java@v4
         with:
-          java-version: '11' # <--- Safer for older Android projects
+          java-version: '11'
           distribution: 'temurin'
 
       - name: Grant execute permissions for Gradle
