@@ -9,35 +9,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download UserLAndLibrary forcefully
+      - name: Download UserLAndLibrary and its Submodules
         run: |
           rm -rf UserLAndLibrary
           git clone https://github.com/RakhithJK/UserLAndLibrary.git UserLAndLibrary
+          cd UserLAndLibrary
+          # Explicitly download only the required nested submodules
+          git submodule update --init bVNC pubkeyGenerator terminal-app terminal-view terminal-emulator
+          cd ..
 
-      - name: Patch for Modern Gradle
+      - name: The Ultimate Modern Gradle Patch
         run: |
-          # Fix the deprecated 'enabled' syntax that crashes Gradle 8
-          sed -i 's/xml.enabled.*/xml.required.set(true)/g' UserLAndLibrary/app/build.gradle
-          sed -i 's/html.enabled.*/html.required.set(true)/g' UserLAndLibrary/app/build.gradle
+          # 1. Strip out dead kotlin-android-extensions from EVERY build.gradle file
+          find . -name "build.gradle" -exec sed -i "s/apply plugin: 'kotlin-android-extensions'//g" {} +
+          find . -name "build.gradle" -exec sed -i 's/id "kotlin-android-extensions"//g' {} +
+          find . -name "build.gradle" -exec sed -i "s/id 'kotlin-android-extensions'//g" {} +
+          find . -name "build.gradle" -exec sed -i '/androidExtensions {/,/}/d' {} +
           
-          # Strip out the dead kotlin-android-extensions plugin
-          sed -i "s/apply plugin: 'kotlin-android-extensions'//g" UserLAndLibrary/app/build.gradle
-          sed -i 's/id "kotlin-android-extensions"//g' UserLAndLibrary/app/build.gradle
-          sed -i "s/id 'kotlin-android-extensions'//g" UserLAndLibrary/app/build.gradle
+          # 2. Fix old Gradle reporting syntax globally
+          find . -name "build.gradle" -exec sed -i 's/xml.enabled.*/xml.required.set(true)/g' {} +
+          find . -name "build.gradle" -exec sed -i 's/html.enabled.*/html.required.set(true)/g' {} +
           
-          # Delete the leftover configuration block for the dead plugin
-          sed -i '/androidExtensions {/,/}/d' UserLAndLibrary/app/build.gradle
-          
-          # Re-enable BuildConfig generation
-          sed -i 's/android {/android {\n    buildFeatures.buildConfig = true/g' UserLAndLibrary/app/build.gradle
-          
-          # FIX: Automatically grab the package name from the Manifest and inject it as a namespace
-          LIB_PKG=$(grep -oP 'package="\K[^"]+' UserLAndLibrary/app/src/main/AndroidManifest.xml | head -n 1)
-          sed -i "s/android {/android {\n    namespace \"$LIB_PKG\"/g" UserLAndLibrary/app/build.gradle
-          
-          # PROACTIVE FIX: Do the exact same thing for the main FoxBox app so it doesn't crash next!
-          APP_PKG=$(grep -oP 'package="\K[^"]+' app/src/main/AndroidManifest.xml | head -n 1)
-          sed -i "s/android {/android {\n    namespace \"$APP_PKG\"\n    buildFeatures.buildConfig = true/g" app/build.gradle
+          # 3. Dynamically inject Namespace and BuildConfig into EVERY module automatically
+          for manifest in $(find . -path "*/src/main/AndroidManifest.xml"); do
+            module_dir=$(echo "$manifest" | sed 's|/src/main/AndroidManifest.xml||')
+            build_gradle="$module_dir/build.gradle"
+            if [ -f "$build_gradle" ]; then
+              pkg=$(grep -oP 'package="\K[^"]+' "$manifest" | head -n 1)
+              if [ ! -z "$pkg" ]; then
+                sed -i "s/android {/android {\n    namespace \"$pkg\"\n    buildFeatures.buildConfig = true/g" "$build_gradle"
+              fi
+            fi
+          done
 
       - name: Set up Java 
         uses: actions/setup-java@v4
