@@ -9,20 +9,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download UserLAndLibrary and Nested Submodules
+      - name: Download UserLAndLibrary (Flattened ZIP Backup)
         run: |
+          # 1. Delete any broken submodule traces
           rm -rf UserLAndLibrary
-          # Clone the library
-          git clone https://github.com/RakhithJK/UserLAndLibrary.git UserLAndLibrary
+          git config --global --remove-section submodule.UserLAndLibrary || true
+          rm -rf .git/modules/UserLAndLibrary || true
           
-          # Go inside the newly downloaded library
-          cd UserLAndLibrary
-          # Point any nested dead links to the backup
-          sed -i 's/CypherpunkArmory/RakhithJK/g' .gitmodules || true
-          git submodule sync || true
-          # Automatically find and download EVERY nested submodule
-          git submodule update --init --recursive || true
-          cd ..
+          # 2. Download the complete, flattened ZIP backup that already contains all nested code
+          wget -qO UserLAndLibrary.zip https://github.com/RakhithJK/UserLAndLibrary/archive/refs/heads/master.zip
+          unzip -q UserLAndLibrary.zip
+          mv UserLAndLibrary-master UserLAndLibrary
+          rm UserLAndLibrary.zip
 
       - name: The Ultimate Modern Gradle Patch
         run: |
