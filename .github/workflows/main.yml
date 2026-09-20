@@ -23,6 +23,8 @@ jobs:
           sed -i "s/apply plugin: 'kotlin-android-extensions'//g" UserLAndLibrary/app/build.gradle
           sed -i 's/id "kotlin-android-extensions"//g' UserLAndLibrary/app/build.gradle
           sed -i "s/id 'kotlin-android-extensions'//g" UserLAndLibrary/app/build.gradle
+          # Delete the leftover configuration block for the dead plugin
+          sed -i '/androidExtensions {/,/}/d' UserLAndLibrary/app/build.gradle
 
       - name: Set up Java 
         uses: actions/setup-java@v4
