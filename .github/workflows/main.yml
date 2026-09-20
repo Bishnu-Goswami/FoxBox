@@ -14,6 +14,16 @@ jobs:
           rm -rf UserLAndLibrary
           git clone https://github.com/RakhithJK/UserLAndLibrary.git UserLAndLibrary
 
+      - name: Patch UserLAndLibrary for Modern Gradle
+        run: |
+          # Fix the deprecated 'enabled' syntax that crashes Gradle 8
+          sed -i 's/xml.enabled.*/xml.required.set(true)/g' UserLAndLibrary/app/build.gradle
+          sed -i 's/html.enabled.*/html.required.set(true)/g' UserLAndLibrary/app/build.gradle
+          # Strip out the dead kotlin-android-extensions plugin
+          sed -i "s/apply plugin: 'kotlin-android-extensions'//g" UserLAndLibrary/app/build.gradle
+          sed -i 's/id "kotlin-android-extensions"//g' UserLAndLibrary/app/build.gradle
+          sed -i "s/id 'kotlin-android-extensions'//g" UserLAndLibrary/app/build.gradle
+
       - name: Set up Java 
         uses: actions/setup-java@v4
         with:
