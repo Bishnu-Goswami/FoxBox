@@ -9,18 +9,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download UserLAndLibrary and its Submodules
+      - name: Download UserLAndLibrary and Nested Submodules
         run: |
-          # 1. Point dead CypherpunkArmory URLs to a known working backup account
+          rm -rf UserLAndLibrary
+          # Clone the library
+          git clone https://github.com/RakhithJK/UserLAndLibrary.git UserLAndLibrary
+          
+          # Go inside the newly downloaded library
+          cd UserLAndLibrary
+          # Point any nested dead links to the backup
           sed -i 's/CypherpunkArmory/RakhithJK/g' .gitmodules || true
           git submodule sync || true
-          
-          # 2. Download the 5 missing submodules from the ROOT folder (Removed the bad 'cd' command!)
-          git submodule update --init bVNC pubkeyGenerator terminal-app terminal-view terminal-emulator || true
-          
-          # 3. Forcefully download UserLAndLibrary to bypass its commit hash error
-          rm -rf UserLAndLibrary
-          git clone https://github.com/RakhithJK/UserLAndLibrary.git UserLAndLibrary
+          # Automatically find and download EVERY nested submodule
+          git submodule update --init --recursive || true
+          cd ..
 
       - name: The Ultimate Modern Gradle Patch
         run: |
