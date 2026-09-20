@@ -8,33 +8,45 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
-      - name: Download UserLAndLibrary (Flattened ZIP Backup)
+      - name: Download UserLAndLibrary and Submodules One-by-One
         run: |
-          # 1. Delete any broken submodule traces
           rm -rf UserLAndLibrary
-          git config --global --remove-section submodule.UserLAndLibrary || true
-          rm -rf .git/modules/UserLAndLibrary || true
           
-          # 2. Download the complete, flattened ZIP backup that already contains all nested code
-          wget -qO UserLAndLibrary.zip https://github.com/RakhithJK/UserLAndLibrary/archive/refs/heads/master.zip
-          unzip -q UserLAndLibrary.zip
-          mv UserLAndLibrary-master UserLAndLibrary
-          rm UserLAndLibrary.zip
+          # 1. Clone the library directly
+          git clone https://github.com/RakhithJK/UserLAndLibrary.git UserLAndLibrary
+          cd UserLAndLibrary
+          
+          # 2. Patch dead URLs in .gitmodules
+          sed -i 's/CypherpunkArmory/RakhithJK/g' .gitmodules || true
+          git submodule sync || true
+          git submodule init || true
+          
+          # 3. Update them ONE BY ONE. If one fails, it prints a warning and CONTINUES downloading the rest!
+          for sub in $(git config --file .gitmodules --get-regexp path | awk '{ print $2 }'); do
+            echo "Downloading $sub..."
+            git submodule update --init "$sub" || echo "WARNING: Failed to fetch $sub, continuing..."
+          done
+          
+          # 4. Nuke the .git folder so GitHub Actions' post-checkout cleanup doesn't crash on dead links
+          rm -rf .git
+          cd ..
 
       - name: The Ultimate Modern Gradle Patch
         run: |
-          # 1. Strip out dead kotlin-android-extensions from EVERY build.gradle file
+          # Strip out dead kotlin-android-extensions from EVERY build.gradle file
           find . -name "build.gradle" -exec sed -i "s/apply plugin: 'kotlin-android-extensions'//g" {} +
           find . -name "build.gradle" -exec sed -i 's/id "kotlin-android-extensions"//g' {} +
           find . -name "build.gradle" -exec sed -i "s/id 'kotlin-android-extensions'//g" {} +
           find . -name "build.gradle" -exec sed -i '/androidExtensions {/,/}/d' {} +
           
-          # 2. Fix old Gradle reporting syntax globally
+          # Fix old Gradle reporting syntax globally
           find . -name "build.gradle" -exec sed -i 's/xml.enabled.*/xml.required.set(true)/g' {} +
           find . -name "build.gradle" -exec sed -i 's/html.enabled.*/html.required.set(true)/g' {} +
           
-          # 3. Dynamically inject Namespace and BuildConfig into EVERY module automatically
+          # Dynamically inject Namespace and BuildConfig into EVERY module automatically
           for manifest in $(find . -path "*/src/main/AndroidManifest.xml"); do
             module_dir=$(echo "$manifest" | sed 's|/src/main/AndroidManifest.xml||')
             build_gradle="$module_dir/build.gradle"
