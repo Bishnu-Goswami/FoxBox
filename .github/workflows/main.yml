@@ -8,14 +8,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        # We removed the automatic submodule download here so it doesn't crash on the dead link
 
-      - name: Patch dead submodule URL and download
+      - name: Download UserLAndLibrary forcefully
         run: |
-          # This replaces the dead URL with a working community backup, then downloads it
-          sed -i 's|https://github.com/CypherpunkArmory/UserLAndLibrary.git|https://github.com/RakhithJK/UserLAndLibrary.git|g' .gitmodules
-          git submodule sync
-          git submodule update --init --recursive
+          rm -rf UserLAndLibrary
+          git clone https://github.com/RakhithJK/UserLAndLibrary.git UserLAndLibrary
 
       - name: Set up Java 
         uses: actions/setup-java@v4
